@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+}
+
+@layer utilities {
+  .markdown-body {
+    @apply text-[#e2e2d5] leading-relaxed space-y-4 font-serif;
+  }
+  .markdown-body h1 {
+    @apply text-3xl font-serif font-light text-[#c4a46d] mt-8 mb-4 tracking-tight;
+  }
+  .markdown-body h2 {
+    @apply text-xl font-serif font-light text-[#c4a46d] mt-8 mb-4 border-b border-[#c4a46d33] pb-2;
+  }
+  .markdown-body h3 {
+    @apply text-xs tracking-[0.3em] uppercase font-sans text-[#c4a46d] mt-8 mb-3;
+  }
+  .markdown-body p {
+    @apply mb-4 text-[#a1a1aa] leading-relaxed text-sm;
+  }
+  .markdown-body ul {
+    @apply list-disc list-inside space-y-2 mb-4 text-[#a1a1aa] text-sm;
+  }
+  .markdown-body ol {
+    @apply list-decimal list-inside space-y-2 mb-4 text-[#a1a1aa] text-sm;
+  }
+  .markdown-body li > strong {
+    @apply text-[#e2e2d5] font-normal;
+  }
+  .markdown-body strong {
+    @apply text-[#e2e2d5] font-normal;
+  }
+}
