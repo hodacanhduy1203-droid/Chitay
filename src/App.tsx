@@ -6,17 +6,48 @@ import { FileUpload } from './components/FileUpload';
 
 export default function App() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  const handleImageSelect = (file: File) => {
+  const handleImageSelect = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    setResult(null);
+    setSelectedImage(null);
+    setImageId(null);
+
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setSelectedImage(e.target?.result as string);
-      setResult(null);
-      setError(null);
+    reader.onload = async (e) => {
+      const base64 = e.target?.result as string;
+      try {
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+
+        const data = await response.json();
+        if (response.ok && data.url) {
+          setSelectedImage(data.url);
+          setImageId(data.id);
+        } else {
+          // Fallback to client-side data url if upload endpoint had issues
+          setSelectedImage(base64);
+          setError(data.error || 'Máy chủ không thể đồng bộ hóa hình ảnh này.');
+        }
+      } catch (err: any) {
+        console.error("Upload error:", err);
+        // Local fallback
+        setSelectedImage(base64);
+      } finally {
+        setIsUploading(false);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -29,12 +60,13 @@ export default function App() {
     setResult(null);
 
     try {
+      const payload = imageId ? { id: imageId } : { imageBase64: selectedImage };
       const response = await fetch('/api/analyze-palm', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ imageBase64: selectedImage }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -93,7 +125,7 @@ export default function App() {
           transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           className="w-full max-w-2xl bg-[#0d0d0f] border border-[#c4a46d33] p-6 sm:p-12 relative"
         >
-          <FileUpload onImageSelect={handleImageSelect} selectedImage={selectedImage} />
+          <FileUpload onImageSelect={handleImageSelect} selectedImage={selectedImage} isUploading={isUploading} />
           
           <AnimatePresence>
             {selectedImage && (

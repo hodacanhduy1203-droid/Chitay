@@ -1,11 +1,12 @@
-import { UploadCloud, Sparkles, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { UploadCloud, Sparkles, Image as ImageIcon, CheckCircle2, RefreshCw } from "lucide-react";
 
 interface FileUploadProps {
   onImageSelect: (file: File) => void;
   selectedImage: string | null;
+  isUploading?: boolean;
 }
 
-export function FileUpload({ onImageSelect, selectedImage }: FileUploadProps) {
+export function FileUpload({ onImageSelect, selectedImage, isUploading }: FileUploadProps) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
@@ -23,7 +24,17 @@ export function FileUpload({ onImageSelect, selectedImage }: FileUploadProps) {
 
   return (
     <div className="w-full">
-      {!selectedImage ? (
+      {isUploading ? (
+        <div className="flex flex-col items-center justify-center w-full h-[400px] sm:h-[500px] border border-[#c4a46d44] bg-[#0a0a0c] relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center space-y-4">
+            <RefreshCw className="w-10 h-10 text-[#c4a46d] animate-spin mb-2" />
+            <p className="text-xs tracking-[0.3em] uppercase font-bold text-[#c4a46d] animate-pulse">
+              Đang đồng bộ hóa sinh trắc học...
+            </p>
+            <p className="text-[10px] text-[#a1a1aa] tracking-widest uppercase font-mono">Bảo mật dữ liệu 256-bit AES</p>
+          </div>
+        </div>
+      ) : !selectedImage ? (
         <label 
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
@@ -64,12 +75,11 @@ export function FileUpload({ onImageSelect, selectedImage }: FileUploadProps) {
           />
         </label>
       ) : (
-        <div className="relative w-full h-[400px] sm:h-[500px] overflow-hidden border border-[#c4a46d44] flex items-center justify-center group">
+        <div className="relative w-full h-[400px] sm:h-[500px] overflow-hidden border border-[#c4a46d44] flex items-center justify-center bg-black/40 group">
           <img 
             src={selectedImage} 
             alt="Bàn tay của bạn" 
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105 p-4"
           />
           <div className="absolute inset-0 bg-[#0a0a0c]/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center" />
           

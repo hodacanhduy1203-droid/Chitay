@@ -28,21 +28,74 @@ async function startServer() {
     console.warn("Failed to initialize GoogleGenAI. Did you provide GEMINI_API_KEY?");
   }
 
+  // Simple in-memory image cache to bypass sandbox / CSP constraints for data: and blob: URLs
+  const imageCache = new Map<string, { buffer: Buffer; mimeType: string }>();
+
+  // Endpoint to cache base64 image and return a safe relative URL path
+  app.post("/api/upload-image", (req, res) => {
+    try {
+      const { imageBase64 } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ error: "Không tìm thấy dữ liệu ảnh." });
+      }
+
+      const mimeTypeMatch = imageBase64.match(/^data:(.*?);base64,/);
+      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
+      const base64Data = imageBase64.replace(/^data:.*?;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      const id = Math.random().toString(36).substring(2, 15);
+      imageCache.set(id, { buffer, mimeType });
+
+      // Keep cache size bounded
+      if (imageCache.size > 50) {
+        const firstKey = imageCache.keys().next().value;
+        if (firstKey) imageCache.delete(firstKey);
+      }
+
+      res.json({ id, url: `/api/image/${id}` });
+    } catch (err: any) {
+      console.error("Error caching image:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Endpoint to serve cached image directly as a safe HTTP relative asset
+  app.get("/api/image/:id", (req, res) => {
+    const { id } = req.params;
+    const img = imageCache.get(id);
+    if (!img) {
+      return res.status(404).send("Hình ảnh không tồn tại hoặc đã hết hạn.");
+    }
+    res.setHeader("Content-Type", img.mimeType);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(img.buffer);
+  });
+
   app.post("/api/analyze-palm", async (req, res) => {
     try {
       if (!ai) {
         return res.status(500).json({ error: "Gemini API is not initialized. Please ensure GEMINI_API_KEY is securely configured." });
       }
 
-      const { imageBase64 } = req.body;
-      if (!imageBase64) {
-        return res.status(400).json({ error: "No image provided." });
-      }
+      const { id, imageBase64 } = req.body;
+      let mimeType = "image/jpeg";
+      let base64Data = "";
 
-      // Extract mime type from base64 string
-      const mimeTypeMatch = imageBase64.match(/^data:(.*?);base64,/);
-      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
-      const base64Data = imageBase64.replace(/^data:.*?;base64,/, "");
+      if (id) {
+        const img = imageCache.get(id);
+        if (!img) {
+          return res.status(400).json({ error: "Phiên làm việc của ảnh đã hết hạn. Vui lòng tải lại ảnh." });
+        }
+        mimeType = img.mimeType;
+        base64Data = img.buffer.toString("base64");
+      } else if (imageBase64) {
+        const mimeTypeMatch = imageBase64.match(/^data:(.*?);base64,/);
+        mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
+        base64Data = imageBase64.replace(/^data:.*?;base64,/, "");
+      } else {
+        return res.status(400).json({ error: "Không nhận được tệp ảnh hay mã ảnh hợp lệ." });
+      }
 
       const prompt = `Bạn là Đại Sư Nhân Tướng Học vĩ đại nhất, người đã tinh thông trọn vẹn các kỳ thư cổ kim: 
 1. "Ma Y Thần Tướng" (âm dương, ngũ hành, bát quái trên lòng bàn tay)
@@ -57,7 +110,7 @@ Hãy phân tích theo cấu trúc sau một cách uyên bác, trang trọng và 
 1. **Tổng Quan Mệnh Cách:** Dựa trên hình dáng và các gò, bàn tay thuộc Hành gì? Bản chất cốt lõi và khí chất.
 2. **Luận Đường Sinh Đạo (Life Line):** Tuổi thọ, sinh lực, gốc rễ sinh mệnh, và biến cố lớn.
 3. **Luận Đường Trí Đạo (Head Line):** Trí huệ, mưu lược, tư duy lãnh đạo bậc cao.
-4. **Luận Đường Tâm Đạo (Heart Line):** Tình duyên, thế giới nội tâm, đạo đức, trắc trở hay hanh thông.
+4. **Luận Đường Tâm Đạo (Heart Line):** Tình duyên, thế giới nội tâm, đạo đức, trắc trước hay hanh thông.
 5. **Đường Định Mệnh & Tài Cung (Fate Line & Wealth):** Vận trình công danh, thời vận bộc phát nghiệp lớn.
 6. **Lời Khuyên Tổng Kết:** Tướng tùy tâm sinh, nên tu dưỡng tâm tính thế nào để hóa giải hung nghiệp, gia tăng cát tường.
 
