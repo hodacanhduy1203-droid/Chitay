@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Xem Chỉ Tay Digital",
+  "description": "Bản luận mệnh chi tiết qua sinh trắc chỉ tay kết hợp tinh hoa cổ thư Đông Tây.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

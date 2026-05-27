@@ -1,30 +1,79 @@
+import { useState, useEffect } from "react";
 import { UploadCloud, Sparkles, Image as ImageIcon, CheckCircle2, RefreshCw } from "lucide-react";
 
 interface FileUploadProps {
   onImageSelect: (file: File) => void;
   selectedImage: string | null;
   isUploading?: boolean;
+  fallbackImages?: string[];
+  heicConverting?: boolean;
 }
 
-export function FileUpload({ onImageSelect, selectedImage, isUploading }: FileUploadProps) {
+export function FileUpload({ 
+  onImageSelect, 
+  selectedImage, 
+  isUploading, 
+  fallbackImages = [], 
+  heicConverting 
+}: FileUploadProps) {
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null);
+  const [failedSrcs, setFailedSrcs] = useState<Set<string>>(new Set());
+
+  // Setup sources list
+  const sources = [selectedImage, ...fallbackImages].filter((s): s is string => !!s);
+
+  useEffect(() => {
+    // Reset state when selectedImage changes
+    setFailedSrcs(new Set());
+    setCurrentSrc(selectedImage);
+  }, [selectedImage]);
+
+  const handleImageError = () => {
+    if (currentSrc) {
+      const nextFailed = new Set(failedSrcs);
+      nextFailed.add(currentSrc);
+      setFailedSrcs(nextFailed);
+
+      // Find the first source that hasn't failed yet
+      const nextSrc = sources.find(src => !nextFailed.has(src));
+      if (nextSrc) {
+        console.warn("Failing back to next image source:", nextSrc);
+        setCurrentSrc(nextSrc);
+      } else {
+        console.error("All image sources failed to load!");
+        setCurrentSrc(null);
+      }
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
       onImageSelect(file);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
       onImageSelect(file);
     }
   };
 
   return (
     <div className="w-full">
-      {isUploading ? (
+      {heicConverting ? (
+        <div className="flex flex-col items-center justify-center w-full h-[400px] sm:h-[500px] border border-[#c4a46d44] bg-[#0a0a0c] relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center space-y-4">
+            <RefreshCw className="w-10 h-10 text-[#c4a46d] animate-spin mb-2" />
+            <p className="text-xs tracking-[0.3em] uppercase font-bold text-[#c4a46d] animate-pulse">
+              Đang chuyển hóa định dạng HEIC/HEIF...
+            </p>
+            <p className="text-[10px] text-[#a1a1aa] tracking-widest uppercase font-mono">Giải mã tương thích tối đa</p>
+          </div>
+        </div>
+      ) : isUploading ? (
         <div className="flex flex-col items-center justify-center w-full h-[400px] sm:h-[500px] border border-[#c4a46d44] bg-[#0a0a0c] relative overflow-hidden">
           <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center space-y-4">
             <RefreshCw className="w-10 h-10 text-[#c4a46d] animate-spin mb-2" />
@@ -34,7 +83,7 @@ export function FileUpload({ onImageSelect, selectedImage, isUploading }: FileUp
             <p className="text-[10px] text-[#a1a1aa] tracking-widest uppercase font-mono">Bảo mật dữ liệu 256-bit AES</p>
           </div>
         </div>
-      ) : !selectedImage ? (
+      ) : !currentSrc ? (
         <label 
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
@@ -77,8 +126,9 @@ export function FileUpload({ onImageSelect, selectedImage, isUploading }: FileUp
       ) : (
         <div className="relative w-full h-[400px] sm:h-[500px] overflow-hidden border border-[#c4a46d44] flex items-center justify-center bg-black/40 group">
           <img 
-            src={selectedImage} 
+            src={currentSrc} 
             alt="Bàn tay của bạn" 
+            onError={handleImageError}
             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105 p-4"
           />
           <div className="absolute inset-0 bg-[#0a0a0c]/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center" />
